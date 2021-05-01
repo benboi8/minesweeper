@@ -35,6 +35,9 @@ allSliders = []
 
 difficulties = 2
 
+boardColorPack = 0
+gameColorPack = 0
+
 saveFileName = "leaderboard.json"
 
 def DrawRectOutline(surface, color, rect, width=1, outWards=False):
@@ -199,12 +202,15 @@ class HoldButton:
 		if event.type == pg.MOUSEBUTTONUP:
 			if event.button == 1:
 				self.active = False
-
+		
 		# change color
 		if self.active:
 			self.currentColor = self.activeColor
 		else:
 			self.currentColor = self.inactiveColor
+		
+		if not self.rect.collidepoint(pg.mouse.get_pos()):
+			self.active = False
 
 	def UpdateText(self, text):
 		self.text = text
@@ -548,29 +554,45 @@ gameData = {
 }
 
 
-# add shop
-# add coins after each level and random bonus from uncovering cells
-
 def CreateSettings():
-	HoldButton(screen, ((width // sf // 2) - 310, (height // sf // 2) - 165, 100, 20), "difficulty", (white, lightGray), ["Difficulty: regular", "arial", 8], lists=[settingsObjs])
-	HoldButton(screen, ((width // sf // 2) - 310, (height // sf // 2) + 145, 100, 20), "restart", (white, lightGray), ["Restart", "arial", 8], lists=[settingsObjs])
+	global settingsObjs
+	settingsObjs = []
+	HoldButton(screen, ((width // sf // 2) - 310, (height // sf // 2) - 165, 150, 20), "difficulty", (white, lightGray), ["Difficulty: regular", "arial", 8], lists=[settingsObjs])
+	HoldButton(screen, ((width // sf // 2) - 310, (height // sf // 2) + 145, 150, 20), "restart", (white, lightGray), ["Restart", "arial", 8], lists=[settingsObjs])
+	HoldButton(screen, ((width // sf // 2) - 310, (height // sf // 2) - 140, 150, 20), "boardColor", (white, lightGray), ["Board style: Blue", "arial", 8], lists=[settingsObjs])
+	HoldButton(screen, ((width // sf // 2) - 310, (height // sf // 2) - 115, 150, 20), "gameColor", (white, lightGray), ["Game style: Normal", "arial", 8], lists=[settingsObjs])
 	
 	UpdateSettings()
 
 
 def UpdateSettings():
 	difficulty = board.difficulty
-	if difficulty == 0:
-		difficulty = "easy"
-	if difficulty == 1:
-		difficulty = "regular"
-	if difficulty == 2:
-		difficulty = "hard"
-	settingsObjs[0].UpdateText("Difficulty: {}".format(difficulty))
+	difficulties = {
+		"0": "Easy",
+		"1": "Regular",
+		"2": "Hard"
+	}
+	settingsObjs[0].UpdateText("Difficulty: {}".format(difficulties[str(difficulty)]))
+
+	boardColors = {
+		"0": "Blue",
+		"1": "Red",
+		"2": "Green",
+	}
+	settingsObjs[2].UpdateText("Board style: {}".format(boardColors[str(boardColorPack)]))
+	
+	gameColors = {
+		"0": "Normal",
+		"1": "Black and white",
+		"2": "Inverted",
+	}
+	settingsObjs[3].UpdateText("Game style: {}".format(gameColors[str(gameColorPack)]))
 	UpdateLeaderBoards()
 
 
 def CreateLeaderBoards():
+	global leaderboardObjs
+	leaderboardObjs = []
 	# time
 	Label(screen, ((width // sf // 2) + 160, (height // sf // 2) - 165, 150, 330), (lightGray, darkGray), ["Best times.", "arial", 10, lightGray, "top-center"], lists=[leaderboardObjs])
 
@@ -604,7 +626,7 @@ def UpdateLeaderBoards():
 				if len(str(seconds)) < 2:
 					seconds = "0" + str(seconds)
 				time = "{}:{}:{}".format(hours, minutes, seconds)
-				Label(screen, ((width // sf // 2) + 165, (height // sf // 2) - 165 + 25 * (i + 1), 125, 20), (lightGray, darkGray), [time, "arial", 12, lightGray, "center-center"], lists=[leaderboardObjs])
+				Label(screen, ((width // sf // 2) + 165, (height // sf // 2) - 165 + 25 * (i + 1), 140, 20), (lightGray, darkGray), [time, "arial", 12, lightGray, "center-center"], lists=[leaderboardObjs])
 				saveFile.close()
 	except:
 		pass
@@ -642,19 +664,65 @@ def Restart():
 		board.__del__()
 	except:
 		pass
+
 	board = Board(screen, ((width // sf // 2) - 150, (height // sf // 2) - 135, 300, 300), (lightGray, darkGray, lightBlue, red, yellow, darkGreen, blue, red), ("", "arial", 8, black), (20, 20, 300, 30), gameData)
 
 
+def ChangeColor():
+	global darkGray, lightGray, lightBlue, red, white
+	if boardColorPack == 0:
+		lightBlue = (0, 167, 205)
+		red = (205, 0, 0)
+	elif boardColorPack == 1:
+		lightBlue = (205, 0, 0)
+		red = (0, 167, 205)
+	elif boardColorPack == 2:
+		lightBlue = (0, 205, 0)
+		red = (205, 0, 0)
+
+	if gameColorPack == 0:
+		darkGray = (55, 55, 55)
+		lightGray = (205, 205, 205)
+		white = (255, 255, 255)
+	elif gameColorPack == 1:
+		darkGray = (0, 0, 0)
+		lightGray = (255, 255, 255)
+		white = (255, 255, 255)
+	elif gameColorPack == 2:
+		darkGray = (205, 205, 205)
+		lightGray = (55, 55, 55)
+		white = (0, 0, 0)
+
+	Restart()
+	CreateLeaderBoards()
+	CreateSettings()
+
+
 def ButtonPress():
+	global boardColorPack, gameColorPack
 	if settingsObjs[0].active:
 		board.ChangeDifficulty()
+		settingsObjs[0].active = False
 	if settingsObjs[1].active:
 		Restart()
+		settingsObjs[1].active = False
+
+	if gameOver or gameWin or not board.countTime:
+		if settingsObjs[2].active:
+			if boardColorPack + 1 <= 2:
+				boardColorPack += 1
+			else:
+				boardColorPack = 0
+			ChangeColor()
+		if settingsObjs[3].active:
+			if gameColorPack + 1 <= 2:
+				gameColorPack += 1
+			else:
+				gameColorPack = 0
+			ChangeColor()
 	UpdateSettings()
 
-Restart()
-CreateLeaderBoards()
-CreateSettings()
+ChangeColor()
 while running:
 	clock.tick(fps)
 
